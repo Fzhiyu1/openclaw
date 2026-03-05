@@ -197,6 +197,10 @@ export const ModelCompatSchema = z
     requiresAssistantAfterToolResult: z.boolean().optional(),
     requiresThinkingAsText: z.boolean().optional(),
     requiresMistralToolIds: z.boolean().optional(),
+    relayToolCompat: z.boolean().optional(),
+    useChatCompletionsToolFormat: z.boolean().optional(),
+    toolResultRole: z.union([z.literal("developer"), z.literal("tool")]).optional(),
+    requiresAssistantContentAsString: z.boolean().optional(),
   })
   .strict()
   .optional();

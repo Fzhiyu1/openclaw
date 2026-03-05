@@ -181,6 +181,103 @@ describe("normalizeModelCompat", () => {
       (normalized.compat as { supportsDeveloperRole?: boolean } | undefined)?.supportsDeveloperRole,
     ).toBe(false);
   });
+
+  it("enables chat-completions tool format when dashscope relay compat is enabled", () => {
+    const model = {
+      ...baseModel(),
+      api: "openai-responses" as Api,
+      provider: "dashscope",
+      baseUrl: "https://relay.example.com/v1",
+      compat: { supportsStore: false, relayToolCompat: true },
+    } as Model<Api>;
+
+    const normalized = normalizeModelCompat(model);
+    const compat = normalized.compat as
+      | {
+          supportsStore?: boolean;
+          useChatCompletionsToolFormat?: boolean;
+          relayToolCompat?: boolean;
+        }
+      | undefined;
+
+    expect(compat?.supportsStore).toBe(false);
+    expect(compat?.useChatCompletionsToolFormat).toBe(true);
+  });
+
+  it("does not enable chat-completions tool format without relay compat flag", () => {
+    const model = {
+      ...baseModel(),
+      api: "openai-responses" as Api,
+      provider: "dashscope",
+      baseUrl: "https://relay.example.com/v1",
+      compat: { supportsStore: false },
+    } as Model<Api>;
+
+    const normalized = normalizeModelCompat(model);
+    const compat = normalized.compat as
+      | { supportsStore?: boolean; useChatCompletionsToolFormat?: boolean }
+      | undefined;
+
+    expect(compat?.supportsStore).toBe(false);
+    expect(compat?.useChatCompletionsToolFormat).toBeUndefined();
+  });
+
+  it("does not enable chat-completions tool format for non-dashscope providers on custom endpoints", () => {
+    const model = {
+      ...baseModel(),
+      api: "openai-responses" as Api,
+      provider: "openai",
+      baseUrl: "https://relay.example.com/v1",
+    } as Model<Api>;
+
+    const normalized = normalizeModelCompat(model);
+    expect(normalized.compat).toBeUndefined();
+  });
+
+  it("adds tool-result compat on dashscope custom endpoints only when relay compat enabled", () => {
+    const model = {
+      ...baseModel(),
+      provider: "dashscope",
+      baseUrl: "https://relay.example.com/v1",
+      compat: { supportsDeveloperRole: false, relayToolCompat: true },
+    } as Model<Api>;
+
+    const normalized = normalizeModelCompat(model);
+    const compat = normalized.compat as
+      | {
+          supportsDeveloperRole?: boolean;
+          toolResultRole?: string;
+          requiresAssistantContentAsString?: boolean;
+          relayToolCompat?: boolean;
+        }
+      | undefined;
+
+    expect(compat?.supportsDeveloperRole).toBe(false);
+    expect(compat?.toolResultRole).toBe("developer");
+    expect(compat?.requiresAssistantContentAsString).toBe(true);
+  });
+
+  it("keeps tool-result compat untouched when relay compat not enabled", () => {
+    const model = {
+      ...baseModel(),
+      provider: "dashscope",
+      baseUrl: "https://relay.example.com/v1",
+      compat: { supportsDeveloperRole: false },
+    } as Model<Api>;
+
+    const normalized = normalizeModelCompat(model);
+    const compat = normalized.compat as
+      | {
+          supportsDeveloperRole?: boolean;
+          toolResultRole?: string;
+          requiresAssistantContentAsString?: boolean;
+        }
+      | undefined;
+
+    expect(compat?.supportsDeveloperRole).toBe(false);
+    expect(compat?.toolResultRole).toBeUndefined();
+    expect(compat?.requiresAssistantContentAsString).toBeUndefined();
+  });
 });
 
 describe("isModernModelRef", () => {

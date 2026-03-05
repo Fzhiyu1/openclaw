@@ -45,19 +45,41 @@ export function normalizeModelCompat(model: Model<Api>): Model<Api> {
     model.provider === "moonshot" ||
     baseUrl.includes("moonshot.ai") ||
     baseUrl.includes("moonshot.cn");
-  const isDashScope = model.provider === "dashscope" || isDashScopeCompatibleEndpoint(baseUrl);
+  const isDashScopeProvider = model.provider === "dashscope";
+  const isDashScopeOfficialEndpoint = isDashScopeCompatibleEndpoint(baseUrl);
+  const isDashScope = isDashScopeProvider || isDashScopeOfficialEndpoint;
+  const compatConfig = (model as { compat?: Record<string, unknown> }).compat ?? {};
+  const relayToolCompat = compatConfig.relayToolCompat === true;
+
+  // For relay endpoints using openai-responses API, force Chat Completions style
+  // tool payloads (e.g. /responses -> /chat/completions rewrites).
+  if (relayToolCompat && model.api === "openai-responses") {
+    return {
+      ...model,
+      compat: { ...compatConfig, useChatCompletionsToolFormat: true },
+    } as Model<"openai-responses">;
+  }
+
   if ((!isZai && !isMoonshot && !isDashScope) || !isOpenAiCompletionsModel(model)) {
     return model;
   }
 
   const openaiModel = model;
   const compat = openaiModel.compat ?? undefined;
-  if (compat?.supportsDeveloperRole === false) {
+
+  // For relay endpoints with explicit compat,
+  // the API may not accept role: "tool" - use role: "developer" instead.
+  const needsToolResultRole = relayToolCompat;
+  if (compat?.supportsDeveloperRole === false && !needsToolResultRole) {
     return model;
   }
 
+  const extraCompat = needsToolResultRole
+    ? { toolResultRole: "developer" as const, requiresAssistantContentAsString: true }
+    : {};
+
   openaiModel.compat = compat
-    ? { ...compat, supportsDeveloperRole: false }
-    : { supportsDeveloperRole: false };
+    ? { ...compat, supportsDeveloperRole: false, ...extraCompat }
+    : { supportsDeveloperRole: false, ...extraCompat };
   return openaiModel;
 }
