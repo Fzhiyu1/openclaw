@@ -382,7 +382,7 @@ export const TtsConfigSchema = z
       .optional(),
     elevenlabs: z
       .object({
-        apiKey: z.string().optional().register(sensitive),
+        apiKey: SecretInputSchema.optional().register(sensitive),
         baseUrl: z.string().optional(),
         voiceId: z.string().optional(),
         modelId: z.string().optional(),
@@ -404,7 +404,7 @@ export const TtsConfigSchema = z
       .optional(),
     openai: z
       .object({
-        apiKey: z.string().optional().register(sensitive),
+        apiKey: SecretInputSchema.optional().register(sensitive),
         model: z.string().optional(),
         voice: z.string().optional(),
       })
@@ -684,6 +684,8 @@ export const ToolsMediaUnderstandingSchema = z
     ...MediaUnderstandingRuntimeFields,
     attachments: MediaUnderstandingAttachmentsSchema,
     models: z.array(MediaUnderstandingModelSchema).optional(),
+    echoTranscript: z.boolean().optional(),
+    echoFormat: z.string().optional(),
   })
   .strict()
   .optional();
